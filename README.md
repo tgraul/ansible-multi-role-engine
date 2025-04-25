@@ -8,11 +8,11 @@ Das Playbook umfasst acht Rollen:
 
 1. **audit**: Erfasst System-Facts (Hostname, IP, OS, Hardware, Dateisysteme, Pakete)
 2. **update**: Führt System- und Sicherheitsupdates durch
-3. **base**: Richtet grundlegende Systemdienste und -konfigurationen ein
-4. **web_service**: Installiert und konfiguriert Webserver (Nginx oder Apache)
-5. **docker_host**: Installiert Docker und konfiguriert Docker-Nutzer
-6. **security_checks**: Führt Sicherheitsüberprüfungen durch
-7. **hardening**: Wendet CIS-Benchmark-Empfehlungen an
+3. **base**: Richtet grundlegende Systemdienste ein (Zeitsynchronisation, lokales Logging, Benutzer, SSH)
+4. **web_service**: Installiert und konfiguriert Webserver (Nginx oder Apache) mit SSL-Unterstützung
+5. **docker_host**: Installiert Docker CE, Docker Compose und konfiguriert Docker-Nutzer
+6. **security_checks**: Führt Sicherheitsüberprüfungen durch (offene Ports, Pakete, Benutzer, etc.)
+7. **hardening**: Wendet CIS-Benchmark-Empfehlungen für Systemhärtung an
 8. **security_tools**: Installiert und konfiguriert Sicherheitstools (fail2ban, PortSentry, psad)
 
 ## Voraussetzungen
@@ -20,6 +20,7 @@ Das Playbook umfasst acht Rollen:
 - Ansible 2.9+
 - SSH-Zugriff auf Zielserver
 - Sudo-Rechte auf Zielserver
+- Python 2.7 oder höher auf den Zielservern
 
 ## Struktur
 
@@ -27,6 +28,7 @@ Das Playbook umfasst acht Rollen:
 ansible-multi-role-engine/
 ├── inventory.ini         # Hostkonfiguration
 ├── site.yml              # Hauptplaybook
+├── pre_tasks.yml         # Vorbereitende Aufgaben
 ├── group_vars/           # Variablen für alle Hosts
 │   └── all.yml
 └── roles/                # Die 8 Hauptrollen
@@ -60,11 +62,11 @@ ansible-playbook -i inventory.ini site.yml --check
 - `audit`: System-Informationen erfassen
 - `update`: System-Updates durchführen
 - `base`, `setup`: Basis-Setup (NTP, Benutzer, SSH)
-- `web`, `services`: Webserver-Konfiguration
+- `web`, `services`: Webserver-Konfiguration (Nginx/Apache)
 - `docker`, `services`: Docker-Host-Konfiguration
-- `security`: Sicherheitsüberprüfungen
+- `security`: Sicherheitsüberprüfungen und -härtung
 - `harden`: System härten nach CIS-Benchmarks
-- `tools`: Sicherheitstools installieren und konfigurieren
+- `tools`: Sicherheitstools installieren und konfigurieren (fail2ban, PortSentry, psad)
 
 ### Auf bestimmte Hosts beschränken
 
@@ -80,13 +82,14 @@ ansible-playbook -i inventory.ini site.yml --limit dockerhosts
 
 Die zentralen Konfigurationen befinden sich in `group_vars/all.yml`. Hier können Sie folgende Einstellungen anpassen:
 
-- NTP-Server
-- Benutzerkonten und SSH-Keys
+- Allgemeine Einstellungen (Sicherheitsupdates, IPv6, Neustarts)
+- NTP-Server und Zeitzone
+- Benutzerkonten und SSH-Schlüssel
 - SSH-Konfiguration (Port, Protokoll, etc.)
-- Webserver-Typ (Nginx/Apache)
-- Docker-Benutzer
+- Webserver-Typ und -Konfiguration (Nginx/Apache, SSL)
+- Docker-Benutzer und Repository-Einstellungen
 - Sicherheitsscanning-Parameter
-- Härtungsoptionen
+- Härtungsoptionen und CIS-Benchmarks
 - Sicherheitstools-Konfiguration (fail2ban, PortSentry, psad)
 
 ## Unterstützte Betriebssysteme
@@ -98,8 +101,8 @@ Die zentralen Konfigurationen befinden sich in `group_vars/all.yml`. Hier könne
 
 Das Playbook führt mehrere Sicherheitsmaßnahmen durch:
 - Deaktivierung nicht benötigter Dienste
-- Einrichtung sicherer SSH-Konfiguration
-- Dateisystem-Härtung
+- Sichere SSH-Konfiguration (Port-Änderung, Key-Auth)
+- Dateisystem-Härtung und Berechtigungen
 - Netzwerkhärtung via sysctl
 - SELinux/AppArmor-Konfiguration
 - Sichere Passwortrichtlinien
@@ -108,16 +111,35 @@ Das Playbook führt mehrere Sicherheitsmaßnahmen durch:
   - PortSentry: Erkennung und Blockierung von Port-Scans
   - psad: Angriffserkennung basierend auf Firewall-Logs
 
+## Pre-flight Checks
+
+Bevor die Rollen ausgeführt werden, führt das Playbook automatisch Vorbereitungsprüfungen durch:
+- Prüfung der Ansible-Version
+- Prüfung der Python-Version
+- Überprüfung der SSH-Verbindung und Sudo-Rechte
+- Überprüfung des Betriebssystems
+- Warnung bei geringem Festplattenspeicher
+- Warnung bei geringem RAM
+
+## Berichte
+
+Während der Ausführung werden verschiedene Berichte erzeugt:
+- Audit-Bericht: Systemfacts und -konfiguration
+- Netzwerk-Scan-Bericht: Offene Ports und Netzwerkschnittstellen
+- Sicherheitsbericht: Veraltete Pakete, kritische Benutzer und Dateien
+- Sicherheitstools-Bericht: Status und blockierte IPs
+
 ## Erweiterung
 
 Um eine neue Rolle hinzuzufügen:
 
 1. Erstellen Sie ein neues Verzeichnis unter `roles/`
-2. Erstellen Sie die Verzeichnisstruktur (tasks, handlers, defaults, etc.)
+2. Erstellen Sie die Verzeichnisstruktur (tasks, handlers, defaults, templates, etc.)
 3. Fügen Sie die Rolle in `site.yml` hinzu
 
 ## Fehlerbehebung
 
 - Prüfen Sie die Verbindung mit `ansible -i inventory.ini all -m ping`
 - Verwenden Sie `--verbose` für detaillierte Ausgaben
-- Führen Sie einen Dry-Run mit `--check` durch, um Änderungen zu prüfen 
+- Führen Sie einen Dry-Run mit `--check` durch, um Änderungen zu prüfen
+- Überprüfen Sie die Berichte im Verzeichnis `/tmp/ansible_reports/` 
