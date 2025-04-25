@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server konfiguriert durch Ansible</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background-color: #f4f4f4;
+        }
+        .container {
+            width: 80%;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background: #35424a;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 4px solid #e8491d;
+        }
+        .content {
+            background: white;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .info {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-left: 4px solid #e8491d;
+        }
+        .footer {
+            background: #35424a;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Server {{ ansible_hostname }} erfolgreich konfiguriert</h1>
+    </header>
+    
+    <div class="container">
+        <div class="content">
+            <h2>Willkommen auf dem {{ web_service | capitalize }}-Server</h2>
+            <p>Diese Seite bestätigt, dass der Webserver erfolgreich installiert und konfiguriert wurde.</p>
+            
+            <div class="info">
+                <h3>Serverinformationen:</h3>
+                <ul>
+                    <li><strong>Hostname:</strong> {{ ansible_hostname }}</li>
+                    <li><strong>IP-Adresse:</strong> {{ ansible_default_ipv4.address }}</li>
+                    <li><strong>Betriebssystem:</strong> {{ ansible_distribution }} {{ ansible_distribution_version }}</li>
+                    <li><strong>Webserver:</strong> {{ web_service | capitalize }}</li>
+                    <li><strong>Datum der Installation:</strong> {{ ansible_date_time.date }}</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Konfiguriert mit Ansible Multi-Role Engine</p>
+        </div>
+    </div>
+</body>
+</html> 

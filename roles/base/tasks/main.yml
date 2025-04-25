@@ -1,0 +1,157 @@
+---
+# Base-Rolle: Richtet grundlegende Systemdienste ein
+
+# Zeitzonenkonfiguration
+- name: Setze Zeitzone
+  ansible.builtin.timezone:
+    name: "{{ timezone | default('Europe/Berlin') }}"
+  tags:
+    - base
+    - time
+
+# NTP-Konfiguration
+- name: Installiere NTP
+  ansible.builtin.package:
+    name: "{{ 'ntp' if ansible_os_family == 'Debian' else 'chrony' }}"
+    state: present
+  tags:
+    - base
+    - time
+
+- name: Konfiguriere NTP Server (Debian/Ubuntu)
+  ansible.builtin.template:
+    src: ntp.conf.j2
+    dest: /etc/ntp.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_os_family == "Debian"
+  notify: restart ntp
+  tags:
+    - base
+    - time
+
+- name: Konfiguriere Chrony (RedHat/CentOS)
+  ansible.builtin.template:
+    src: chrony.conf.j2
+    dest: /etc/chrony.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_os_family == "RedHat"
+  notify: restart chrony
+  tags:
+    - base
+    - time
+
+- name: Aktiviere und starte NTP/Chrony Dienst
+  ansible.builtin.service:
+    name: "{{ 'ntp' if ansible_os_family == 'Debian' else 'chronyd' }}"
+    state: started
+    enabled: true
+  tags:
+    - base
+    - time
+
+# Benutzerverwaltung
+- name: Erstelle Admin-Benutzer
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    groups: "{{ item.groups | default([]) }}"
+    shell: "{{ item.shell | default('/bin/bash') }}"
+    state: present
+  loop: "{{ admin_users }}"
+  tags:
+    - base
+    - users
+
+- name: Setze SSH-Schlüssel für Admin-Benutzer
+  ansible.builtin.authorized_key:
+    user: "{{ item.name }}"
+    key: "{{ item.ssh_key }}"
+    state: present
+  loop: "{{ admin_users }}"
+  when: item.ssh_key is defined
+  tags:
+    - base
+    - users
+
+- name: Entferne unerwünschte Benutzer
+  ansible.builtin.user:
+    name: "{{ item }}"
+    state: absent
+    remove: true
+  loop: "{{ remove_users | default([]) }}"
+  tags:
+    - base
+    - users
+
+# Sudo-Konfiguration
+- name: Installiere sudo-Paket
+  ansible.builtin.package:
+    name: sudo
+    state: present
+  tags:
+    - base
+    - sudo
+
+- name: Konfiguriere sudo-Berechtigungen für Admin-Gruppe
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers.d/admins
+    regexp: "^%sudo"
+    line: "%sudo ALL=(ALL) NOPASSWD: ALL"
+    state: present
+    mode: '0440'
+    create: true
+    validate: '/usr/sbin/visudo -cf %s'
+  tags:
+    - base
+    - sudo
+
+# SSH-Dämon Konfiguration
+- name: Konfiguriere SSH-Daemon
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: '0600'
+    validate: '/usr/sbin/sshd -t -f %s'
+  notify: restart sshd
+  tags:
+    - base
+    - ssh
+
+# Lokales Logging
+- name: Konfiguriere Syslog
+  ansible.builtin.template:
+    src: rsyslog.conf.j2
+    dest: "/etc/rsyslog.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart rsyslog
+  tags:
+    - base
+    - logging
+
+- name: Aktiviere und starte Syslog-Dienst
+  ansible.builtin.service:
+    name: "{{ 'rsyslog' if ansible_os_family in ['Debian', 'RedHat'] else 'syslog' }}"
+    state: started
+    enabled: true
+  tags:
+    - base
+    - logging
+
+# Logging-Rotation
+- name: Konfiguriere Logrotate
+  ansible.builtin.template:
+    src: logrotate.conf.j2
+    dest: /etc/logrotate.d/custom
+    owner: root
+    group: root
+    mode: '0644'
+  tags:
+    - base
+    - logging

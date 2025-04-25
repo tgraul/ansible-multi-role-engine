@@ -1,0 +1,56 @@
+# Logrotate-Konfiguration, generiert durch Ansible
+# Hostname: {{ ansible_hostname }}
+
+# Globale Einstellungen für alle Logs
+/var/log/*.log {
+    weekly
+    rotate 4
+    missingok
+    notifempty
+    compress
+    delaycompress
+    sharedscripts
+    postrotate
+        /bin/systemctl reload rsyslog.service > /dev/null 2>&1 || true
+    endscript
+}
+
+# Systemprotokolle
+/var/log/syslog {
+    daily
+    rotate 7
+    missingok
+    notifempty
+    compress
+    delaycompress
+    postrotate
+        /bin/systemctl reload rsyslog.service > /dev/null 2>&1 || true
+    endscript
+}
+
+# Autorisierungsprotokolle
+/var/log/auth.log {
+    weekly
+    rotate 4
+    missingok
+    notifempty
+    compress
+    delaycompress
+    create 0640 root adm
+    postrotate
+        /bin/systemctl reload rsyslog.service > /dev/null 2>&1 || true
+    endscript
+}
+
+# Daemon-Protokolle
+/var/log/daemon.log {
+    weekly
+    rotate 4
+    missingok
+    notifempty
+    compress
+    delaycompress
+    postrotate
+        /bin/systemctl reload rsyslog.service > /dev/null 2>&1 || true
+    endscript
+} 

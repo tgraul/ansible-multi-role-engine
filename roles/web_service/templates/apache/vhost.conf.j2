@@ -1,0 +1,71 @@
+# Apache Virtual Host Konfiguration für {{ web_server_name }}
+# Generiert durch Ansible
+
+{% if enable_web_ssl | default(true) %}
+<VirtualHost *:{{ web_port }}>
+    ServerName {{ web_server_name }}
+    ServerAdmin webmaster@{{ web_server_name }}
+    
+    # Redirect all HTTP traffic to HTTPS
+    RewriteEngine On
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}$1 [R=301,L]
+</VirtualHost>
+
+<VirtualHost *:{{ web_ssl_port }}>
+    ServerName {{ web_server_name }}
+    ServerAdmin webmaster@{{ web_server_name }}
+    
+    # Document Root
+    DocumentRoot {{ web_document_root }}
+    
+    # SSL Konfiguration
+    SSLEngine on
+    SSLCertificateFile /etc/ssl/certs/{{ web_server_name }}.crt
+    SSLCertificateKeyFile /etc/ssl/private/{{ web_server_name }}.key
+    SSLProtocol All -SSLv2 -SSLv3 -TLSv1 -TLSv1.1
+    SSLCipherSuite ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256
+    SSLHonorCipherOrder on
+    SSLCompression off
+    
+    # HSTS (15768000 seconds = 6 months)
+    Header always set Strict-Transport-Security "max-age=15768000; includeSubDomains"
+{% else %}
+<VirtualHost *:{{ web_port }}>
+    ServerName {{ web_server_name }}
+    ServerAdmin webmaster@{{ web_server_name }}
+    
+    # Document Root
+    DocumentRoot {{ web_document_root }}
+{% endif %}
+    
+    # Logging
+    ErrorLog ${APACHE_LOG_DIR}/{{ web_server_name }}-error.log
+    CustomLog ${APACHE_LOG_DIR}/{{ web_server_name }}-access.log combined
+    
+    # Verzeichniszugriff konfigurieren
+    <Directory {{ web_document_root }}>
+        Options FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+    
+    # Security Headers
+    Header always set X-Frame-Options SAMEORIGIN
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; object-src 'none'"
+    Header always set Referrer-Policy "no-referrer-when-downgrade"
+    
+    # Deny access to sensitive files
+    <FilesMatch "^\.ht">
+        Require all denied
+    </FilesMatch>
+    
+    # Custom error pages
+    ErrorDocument 404 /404.html
+    ErrorDocument 500 /50x.html
+    ErrorDocument 502 /50x.html
+    ErrorDocument 503 /50x.html
+    ErrorDocument 504 /50x.html
+</VirtualHost> 

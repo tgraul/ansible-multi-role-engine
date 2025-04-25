@@ -1,0 +1,35 @@
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "3"
+  },
+  "storage-driver": "overlay2",
+  "metrics-addr": "127.0.0.1:9323",
+  "experimental": false,
+  "live-restore": true,
+{% if docker_registry_mirrors is defined %}
+  "registry-mirrors": [
+{% for mirror in docker_registry_mirrors %}
+    "{{ mirror }}"{% if not loop.last %},{% endif %}
+{% endfor %}
+  ],
+{% endif %}
+{% if docker_insecure_registries is defined %}
+  "insecure-registries": [
+{% for registry in docker_insecure_registries %}
+    "{{ registry }}"{% if not loop.last %},{% endif %}
+{% endfor %}
+  ],
+{% endif %}
+  "default-address-pools": [
+    {
+      "base": "172.17.0.0/16",
+      "size": 24
+    },
+    {
+      "base": "172.18.0.0/16",
+      "size": 24
+    }
+  ]
+} 

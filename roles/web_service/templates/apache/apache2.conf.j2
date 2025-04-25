@@ -1,0 +1,95 @@
+# Apache2 Konfiguration, generiert durch Ansible
+# Hostname: {{ ansible_hostname }}
+
+# Global configuration
+ServerRoot "/etc/apache2"
+Timeout 300
+KeepAlive On
+MaxKeepAliveRequests 100
+KeepAliveTimeout 5
+
+# MPM Konfiguration
+<IfModule mpm_prefork_module>
+    StartServers          5
+    MinSpareServers       5
+    MaxSpareServers       10
+    MaxRequestWorkers     150
+    MaxConnectionsPerChild  4000
+</IfModule>
+
+# Worker-MPM
+<IfModule mpm_worker_module>
+    StartServers          2
+    MinSpareThreads       25
+    MaxSpareThreads       75
+    ThreadLimit           64
+    ThreadsPerChild       25
+    MaxRequestWorkers     150
+    MaxConnectionsPerChild  0
+</IfModule>
+
+# Event-MPM
+<IfModule mpm_event_module>
+    StartServers          2
+    MinSpareThreads       25
+    MaxSpareThreads       75
+    ThreadLimit           64
+    ThreadsPerChild       25
+    MaxRequestWorkers     150
+    MaxConnectionsPerChild  0
+</IfModule>
+
+# Module-Laden
+LoadModule alias_module modules/mod_alias.so
+LoadModule authz_core_module modules/mod_authz_core.so
+LoadModule dir_module modules/mod_dir.so
+LoadModule log_config_module modules/mod_log_config.so
+LoadModule mime_module modules/mod_mime.so
+LoadModule rewrite_module modules/mod_rewrite.so
+LoadModule setenvif_module modules/mod_setenvif.so
+LoadModule ssl_module modules/mod_ssl.so
+
+# Sicherheitseinstellungen
+ServerTokens Prod
+ServerSignature Off
+TraceEnable Off
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "SAMEORIGIN"
+Header always set X-XSS-Protection "1; mode=block"
+Header always set Referrer-Policy "no-referrer-when-downgrade"
+Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; object-src 'none'"
+
+# Logging
+LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" combined
+LogFormat "%h %l %u %t \"%r\" %>s %b" common
+CustomLog "/var/log/apache2/access.log" combined
+ErrorLog "/var/log/apache2/error.log"
+LogLevel warn
+
+# MIME-Typen
+TypesConfig /etc/mime.types
+AddType application/x-compress .Z
+AddType application/x-gzip .gz .tgz
+AddType text/html .shtml
+AddOutputFilter INCLUDES .shtml
+
+# Verzeichnisindizierung
+<IfModule dir_module>
+    DirectoryIndex index.html
+</IfModule>
+
+# Verzeichniskonfiguration
+<Directory />
+    AllowOverride none
+    Require all denied
+</Directory>
+
+# Zugriff auf Dokument-Root
+<Directory "{{ web_document_root }}">
+    Options FollowSymLinks
+    AllowOverride All
+    Require all granted
+</Directory>
+
+# Virtual Hosts
+IncludeOptional sites-enabled/*.conf 

@@ -1,0 +1,20 @@
+---
+# Handlers für die Web-Service-Rolle
+
+- name: restart nginx
+  ansible.builtin.service:
+    name: nginx
+    state: restarted
+  when: web_service == "nginx"
+  tags:
+    - web
+    - nginx
+
+- name: restart apache
+  ansible.builtin.service:
+    name: "{{ 'apache2' if ansible_os_family == 'Debian' else 'httpd' }}"
+    state: restarted
+  when: web_service == "apache"
+  tags:
+    - web
+    - apache 

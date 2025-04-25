@@ -1,0 +1,24 @@
+# Chrony-Konfiguration, generiert durch Ansible
+# Hostname: {{ ansible_hostname }}
+
+# Verwende NTP-Server
+{% for server in ntp_servers %}
+server {{ server }} iburst
+{% endfor %}
+
+# Lokale Uhr nicht verwenden
+local stratum 10
+
+# Protokolldatei
+logdir /var/log/chrony
+log measurements statistics tracking
+
+# Drift-Datei
+driftfile /var/lib/chrony/drift
+
+# Synchronisierungszeit
+makestep 1.0 3
+
+# Erlaubte Client-Netzwerke
+allow 127.0.0.1
+allow ::1 

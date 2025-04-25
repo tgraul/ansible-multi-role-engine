@@ -1,0 +1,179 @@
+---
+# Web Service Role: Installation und Konfiguration von Nginx oder Apache
+
+# Nginx Installation und Konfiguration
+- name: Installiere Nginx
+  ansible.builtin.package:
+    name: nginx
+    state: present
+  when: web_service == "nginx"
+  tags:
+    - web
+    - nginx
+
+- name: Konfiguriere Nginx
+  ansible.builtin.template:
+    src: nginx/nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: web_service == "nginx"
+  notify: restart nginx
+  tags:
+    - web
+    - nginx
+
+- name: Erstelle Nginx Vhost-Konfiguration
+  ansible.builtin.template:
+    src: nginx/vhost.conf.j2
+    dest: "/etc/nginx/sites-available/{{ web_server_name }}"
+    owner: root
+    group: root
+    mode: '0644'
+  when: web_service == "nginx"
+  tags:
+    - web
+    - nginx
+
+- name: Aktiviere Nginx Vhost
+  ansible.builtin.file:
+    src: "/etc/nginx/sites-available/{{ web_server_name }}"
+    dest: "/etc/nginx/sites-enabled/{{ web_server_name }}"
+    state: link
+  when: web_service == "nginx"
+  notify: restart nginx
+  tags:
+    - web
+    - nginx
+
+- name: Entferne Nginx Default-Vhost
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  when: web_service == "nginx"
+  notify: restart nginx
+  tags:
+    - web
+    - nginx
+
+# Apache Installation und Konfiguration
+- name: Installiere Apache
+  ansible.builtin.package:
+    name: "{{ 'apache2' if ansible_os_family == 'Debian' else 'httpd' }}"
+    state: present
+  when: web_service == "apache"
+  tags:
+    - web
+    - apache
+
+- name: Konfiguriere Apache
+  ansible.builtin.template:
+    src: apache/apache2.conf.j2
+    dest: "{{ '/etc/apache2/apache2.conf' if ansible_os_family == 'Debian' else '/etc/httpd/conf/httpd.conf' }}"
+    owner: root
+    group: root
+    mode: '0644'
+  when: web_service == "apache"
+  notify: restart apache
+  tags:
+    - web
+    - apache
+
+- name: Erstelle Apache Vhost-Konfiguration
+  ansible.builtin.template:
+    src: apache/vhost.conf.j2
+    dest: "{{ '/etc/apache2/sites-available/' + web_server_name + '.conf' if ansible_os_family == 'Debian' else '/etc/httpd/conf.d/' + web_server_name + '.conf' }}"
+    owner: root
+    group: root
+    mode: '0644'
+  when: web_service == "apache"
+  tags:
+    - web
+    - apache
+
+- name: Aktiviere Apache Vhost (nur Debian/Ubuntu)
+  ansible.builtin.command: a2ensite {{ web_server_name }}
+  args:
+    creates: "/etc/apache2/sites-enabled/{{ web_server_name }}.conf"
+  when: 
+    - web_service == "apache"
+    - ansible_os_family == "Debian"
+  notify: restart apache
+  tags:
+    - web
+    - apache
+
+- name: Aktiviere benötigte Apache-Module (nur Debian/Ubuntu)
+  ansible.builtin.command: a2enmod {{ item }}
+  args:
+    creates: "/etc/apache2/mods-enabled/{{ item }}.load"
+  loop:
+    - rewrite
+    - ssl
+    - headers
+  when: 
+    - web_service == "apache"
+    - ansible_os_family == "Debian"
+  notify: restart apache
+  tags:
+    - web
+    - apache
+
+# SSL-Konfiguration
+- name: Erstelle selbstsigniertes SSL-Zertifikat
+  ansible.builtin.command: >
+    openssl req -x509 -nodes -days 3650 -newkey rsa:2048
+    -keyout /etc/ssl/private/{{ web_server_name }}.key
+    -out /etc/ssl/certs/{{ web_server_name }}.crt
+    -subj "/C=DE/ST=Berlin/L=Berlin/O=Security/OU=IT/CN={{ web_server_name }}"
+  args:
+    creates: "/etc/ssl/certs/{{ web_server_name }}.crt"
+  when: enable_web_ssl | default(true)
+  tags:
+    - web
+    - ssl
+
+# Webserver Dokument-Root erstellen
+- name: Erstelle Dokument-Root-Verzeichnis
+  ansible.builtin.file:
+    path: "{{ web_document_root }}"
+    state: directory
+    owner: "{{ 'www-data' if ansible_os_family == 'Debian' else 'apache' }}"
+    group: "{{ 'www-data' if ansible_os_family == 'Debian' else 'apache' }}"
+    mode: '0755'
+  tags:
+    - web
+    - setup
+
+- name: Erstelle Test-Seite
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: "{{ web_document_root }}/index.html"
+    owner: "{{ 'www-data' if ansible_os_family == 'Debian' else 'apache' }}"
+    group: "{{ 'www-data' if ansible_os_family == 'Debian' else 'apache' }}"
+    mode: '0644'
+  tags:
+    - web
+    - setup
+
+# Aktiviere und starte Webserver
+- name: Aktiviere und starte Nginx
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+  when: web_service == "nginx"
+  tags:
+    - web
+    - service
+
+- name: Aktiviere und starte Apache
+  ansible.builtin.service:
+    name: "{{ 'apache2' if ansible_os_family == 'Debian' else 'httpd' }}"
+    state: started
+    enabled: true
+  when: web_service == "apache"
+  tags:
+    - web
+    - service

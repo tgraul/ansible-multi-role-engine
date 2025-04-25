@@ -1,0 +1,33 @@
+# rsyslog Konfiguration, generiert durch Ansible
+# Hostname: {{ ansible_hostname }}
+
+# Module laden
+module(load="imuxsock") # UNIX-Socket-Unterstützung
+module(load="imklog")   # Kernel-Log-Unterstützung
+
+# Globale Direktiven
+$ActionFileDefaultTemplate RSYSLOG_TraditionalFileFormat
+$RepeatedMsgReduction on
+$FileOwner root
+$FileGroup adm
+$FileCreateMode 0640
+$DirCreateMode 0755
+$Umask 0022
+$IncludeConfig /etc/rsyslog.d/*.conf
+
+# Log-Regeln
+auth,authpriv.*         /var/log/auth.log
+*.*;auth,authpriv.none  -/var/log/syslog
+cron.*                 /var/log/cron.log
+daemon.*               -/var/log/daemon.log
+kern.*                 -/var/log/kern.log
+lpr.*                  -/var/log/lpr.log
+mail.*                 -/var/log/mail.log
+user.*                 -/var/log/user.log
+
+# Schwerwiegende Meldungen
+*.emerg                 :omusrmsg:*
+
+# Rotationsdirektiven
+$MaxMessageSize 8k
+$WorkDirectory /var/lib/rsyslog 

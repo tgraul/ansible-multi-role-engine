@@ -1,0 +1,24 @@
+---
+# Handlers für die Base-Rolle
+
+- name: restart ntp
+  ansible.builtin.service:
+    name: ntp
+    state: restarted
+  when: ansible_os_family == "Debian"
+
+- name: restart chrony
+  ansible.builtin.service:
+    name: chronyd
+    state: restarted
+  when: ansible_os_family == "RedHat"
+
+- name: restart sshd
+  ansible.builtin.service:
+    name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+    state: restarted
+
+- name: restart rsyslog
+  ansible.builtin.service:
+    name: rsyslog
+    state: restarted 

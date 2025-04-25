@@ -1,0 +1,10 @@
+---
+# Handlers für die Docker-Host-Rolle
+
+- name: restart docker
+  ansible.builtin.service:
+    name: docker
+    state: restarted
+  tags:
+    - docker
+    - service 

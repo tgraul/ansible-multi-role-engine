@@ -1,0 +1,24 @@
+# NTP-Konfiguration, generiert durch Ansible
+# Hostname: {{ ansible_hostname }}
+
+# Erlaubte Anfragen von localhost und lokalem Netzwerk
+restrict 127.0.0.1
+restrict ::1
+
+# Zugriff auf NTP-Server
+{% for server in ntp_servers %}
+server {{ server }} iburst
+{% endfor %}
+
+# Drift-Datei für Stabilität
+driftfile /var/lib/ntp/ntp.drift
+
+# Logging
+logfile /var/log/ntp.log
+
+# Statistik-Konfiguration
+statsdir /var/log/ntpstats/
+statistics loopstats peerstats clockstats
+filegen loopstats file loopstats type day enable
+filegen peerstats file peerstats type day enable
+filegen clockstats file clockstats type day enable 
