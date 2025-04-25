@@ -1,0 +1,63 @@
+############################################
+# SECURITY TOOLS REPORT: {{ ansible_hostname }}
+# Generated: {{ ansible_date_time.date }} {{ ansible_date_time.time }}
+############################################
+
+FAIL2BAN STATUS
+--------------
+{{ fail2ban_status.stdout }}
+
+PORTSENTRY STATUS
+---------------
+{{ portsentry_status.stdout }}
+
+PSAD STATUS
+---------
+{{ psad_status.stdout }}
+
+BLOCKED IPS (FAIL2BAN)
+--------------------
+{% if fail2ban_status.stdout is defined %}
+{% for line in fail2ban_status.stdout_lines %}
+{% if 'Currently banned' in line or 'Banned IP list' in line %}
+{{ line }}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+BLOCKED IPS (PORTSENTRY)
+----------------------
+{% if portsentry_blocked_file is defined and portsentry_blocked_file.stdout is defined %}
+{{ portsentry_blocked_file.stdout }}
+{% else %}
+No PortSentry blocked list information available
+{% endif %}
+
+BLOCKED IPS (PSAD)
+----------------
+{% if psad_status.stdout is defined %}
+{% for line in psad_status.stdout_lines %}
+{% if 'Blocked IP' in line %}
+{{ line }}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+RECOMMENDATIONS:
+--------------
+1. Überprüfen Sie regelmäßig die Logs dieser Sicherheitstools:
+   - fail2ban: /var/log/fail2ban.log
+   - portsentry: /var/log/syslog
+   - psad: /var/log/psad/
+
+2. Passen Sie die Sperrzeit und Erkennungsschwellen an Ihre Anforderungen an.
+
+3. Fügen Sie vertrauenswürdige IPs zu den Ausnahmelisten hinzu.
+
+4. Für fail2ban sollten Sie weitere Jails für zusätzliche Dienste konfigurieren.
+
+5. Überprüfen Sie, dass alle Tools aktiv und korrekt konfiguriert sind.
+
+############################################
+# END OF REPORT
+############################################ 

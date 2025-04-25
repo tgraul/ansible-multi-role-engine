@@ -1,0 +1,16 @@
+[sshd]
+enabled = true
+port    = {{ sshd_config.port | default(22) }}
+filter  = sshd
+logpath = /var/log/auth.log
+maxretry = {{ fail2ban_sshd_maxretry | default(3) }}
+bantime = {{ fail2ban_sshd_bantime | default(86400) }}
+action  = %(action_{{ fail2ban_sshd_action | default('mwl') }})s
+
+[dropbear]
+enabled  = {{ 'true' if ansible_os_family == 'Debian' else 'false' }}
+port     = {{ sshd_config.port | default(22) }}
+filter   = dropbear
+logpath  = /var/log/auth.log
+maxretry = {{ fail2ban_sshd_maxretry | default(3) }}
+bantime  = {{ fail2ban_sshd_bantime | default(86400) }} 

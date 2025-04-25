@@ -1,0 +1,50 @@
+############################################
+# NETWORK SCAN REPORT: {{ ansible_hostname }}
+# Generated: {{ ansible_date_time.date }} {{ ansible_date_time.time }}
+############################################
+
+SYSTEM INFORMATION
+-----------------
+Hostname: {{ ansible_hostname }}
+Primary IP: {{ ansible_default_ipv4.address }}
+Interface: {{ ansible_default_ipv4.interface }}
+MAC: {{ ansible_default_ipv4.macaddress }}
+
+LOCAL PORT SCAN (127.0.0.1)
+-------------------------
+{{ nmap_local_scan.stdout }}
+
+EXTERNAL PORT SCAN ({{ ansible_default_ipv4.address }})
+-------------------------------------------------
+{{ nmap_external_scan.stdout }}
+
+NETWORK INTERFACE INFORMATION
+---------------------------
+{% for interface in ansible_interfaces %}
+{% if interface != 'lo' %}
+Interface: {{ interface }}
+{% if hostvars[inventory_hostname]['ansible_' + interface]['ipv4'] is defined %}
+  IPv4: {{ hostvars[inventory_hostname]['ansible_' + interface]['ipv4']['address'] }}
+  Netmask: {{ hostvars[inventory_hostname]['ansible_' + interface]['ipv4']['netmask'] }}
+{% endif %}
+{% if hostvars[inventory_hostname]['ansible_' + interface]['ipv6'] is defined %}
+  IPv6: {{ hostvars[inventory_hostname]['ansible_' + interface]['ipv6'][0]['address'] }}
+{% endif %}
+{% if hostvars[inventory_hostname]['ansible_' + interface]['active'] is defined %}
+  Active: {{ hostvars[inventory_hostname]['ansible_' + interface]['active'] }}
+{% endif %}
+{% endif %}
+{% endfor %}
+
+RECOMMENDATIONS
+-------------
+- Close all unnecessary ports
+- Use restrictive firewall rules 
+- Implement port knocking for critical services
+- Use TLS for all exposed services
+- Configure fail2ban to prevent brute force attacks
+- Monitor network traffic for unusual patterns
+
+############################################
+# END OF REPORT
+############################################ 

@@ -1,0 +1,25 @@
+############################################
+# PortSentry Ignore List
+# Generiert durch Ansible
+############################################
+
+# Localhost
+127.0.0.1/8
+
+# Lokales Netzwerk
+{% if ansible_default_ipv4.network is defined and ansible_default_ipv4.netmask is defined %}
+{{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.netmask }}
+{% endif %}
+
+# Trusted hosts/networks
+{% if portsentry_trusted_networks is defined %}
+{% for network in portsentry_trusted_networks %}
+{{ network }}
+{% endfor %}
+{% endif %}
+
+{% if portsentry_trusted_hosts is defined %}
+{% for host in portsentry_trusted_hosts %}
+{{ host }}
+{% endfor %}
+{% endif %} 

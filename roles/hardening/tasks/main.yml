@@ -1,0 +1,227 @@
+---
+# Hardening-Rolle: Wendet CIS-Benchmark-Empfehlungen an
+
+# Sysctl-Konfiguration
+- name: Konfiguriere Kernel-Parameter für erhöhte Sicherheit
+  ansible.builtin.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: true
+  with_dict: "{{ sysctl_config }}"
+  tags: 
+    - harden
+    - sysctl
+
+# Härtung der Datei-Permissions
+- name: Setze sichere Berechtigungen für kritische Systemdateien
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    mode: "{{ item.mode }}"
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+  loop:
+    - { path: '/etc/passwd', mode: '0644' }
+    - { path: '/etc/shadow', mode: '0000' }
+    - { path: '/etc/gshadow', mode: '0000' }
+    - { path: '/etc/group', mode: '0644' }
+    - { path: '/etc/ssh/sshd_config', mode: '0600' }
+    - { path: '/etc/crontab', mode: '0600' }
+    - { path: '/etc/cron.hourly', mode: '0700' }
+    - { path: '/etc/cron.daily', mode: '0700' }
+    - { path: '/etc/cron.weekly', mode: '0700' }
+    - { path: '/etc/cron.monthly', mode: '0700' }
+    - { path: '/etc/cron.d', mode: '0700' }
+  tags:
+    - harden
+    - file_permissions
+
+# Deaktiviere unnötige Dienste
+- name: Identifiziere und deaktiviere unnötige Dienste
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  loop:
+    - avahi-daemon
+    - cups
+    - dhcpd
+    - rpcbind
+    - nfs
+    - telnet
+    - rsh-server
+    - ypserv
+    - tftp
+    - xinetd
+  ignore_errors: true
+  tags:
+    - harden
+    - services
+
+# Festlegen von Passwort-Richtlinien
+- name: Installiere PAM für Passwort-Regeln
+  ansible.builtin.package:
+    name: 
+      - libpam-pwquality
+    state: present
+  when: ansible_os_family == "Debian"
+  tags:
+    - harden
+    - passwords
+
+- name: Installiere PAM für Passwort-Regeln (RedHat)
+  ansible.builtin.package:
+    name: 
+      - pam_pwquality
+    state: present
+  when: ansible_os_family == "RedHat"
+  tags:
+    - harden
+    - passwords
+
+- name: Passwort-Richtlinien konfigurieren
+  ansible.builtin.lineinfile:
+    path: /etc/security/pwquality.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+  loop:
+    - { regexp: '^# minlen =', line: 'minlen = 14' }
+    - { regexp: '^# dcredit =', line: 'dcredit = -1' }
+    - { regexp: '^# ucredit =', line: 'ucredit = -1' }
+    - { regexp: '^# ocredit =', line: 'ocredit = -1' }
+    - { regexp: '^# lcredit =', line: 'lcredit = -1' }
+  tags:
+    - harden
+    - passwords
+
+# Limits-Konfiguration
+- name: Konfiguriere System-Limits
+  ansible.builtin.template:
+    src: limits.conf.j2
+    dest: /etc/security/limits.d/cis-limits.conf
+    owner: root
+    group: root
+    mode: '0644'
+  tags:
+    - harden
+    - limits
+
+# Datei-Integrität
+- name: Installiere AIDE (Debian/Ubuntu)
+  ansible.builtin.package:
+    name: aide
+    state: present
+  when: ansible_os_family == "Debian"
+  tags:
+    - harden
+    - aide
+
+- name: Installiere AIDE (RedHat/CentOS)
+  ansible.builtin.package:
+    name: aide
+    state: present
+  when: ansible_os_family == "RedHat"
+  tags:
+    - harden
+    - aide
+
+- name: Initialisiere AIDE-Datenbank
+  ansible.builtin.shell: |
+    aide --init
+    mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
+  args:
+    creates: /var/lib/aide/aide.db
+  ignore_errors: true
+  tags:
+    - harden
+    - aide
+
+# SELinux/AppArmor
+- name: Aktiviere SELinux (RedHat/CentOS)
+  ansible.builtin.lineinfile:
+    path: /etc/selinux/config
+    regexp: '^SELINUX='
+    line: 'SELINUX=enforcing'
+  when: ansible_os_family == "RedHat"
+  tags:
+    - harden
+    - selinux
+
+- name: Installiere AppArmor (Debian/Ubuntu)
+  ansible.builtin.package:
+    name:
+      - apparmor
+      - apparmor-utils
+    state: present
+  when: ansible_os_family == "Debian"
+  tags:
+    - harden
+    - apparmor
+
+- name: Aktiviere AppArmor (Debian/Ubuntu)
+  ansible.builtin.service:
+    name: apparmor
+    state: started
+    enabled: true
+  when: ansible_os_family == "Debian"
+  tags:
+    - harden
+    - apparmor
+  notify: restart apparmor
+
+# Minimiere Boot-Loader-Verzögerung
+- name: Konfiguriere GRUB-Timeout auf 5 Sekunden
+  ansible.builtin.lineinfile:
+    path: "{{ item }}"
+    regexp: '^GRUB_TIMEOUT='
+    line: 'GRUB_TIMEOUT=5'
+  loop:
+    - /etc/default/grub
+  ignore_errors: true
+  register: grub_timeout
+  tags:
+    - harden
+    - boot
+
+- name: Aktualisiere GRUB wenn geändert (Debian/Ubuntu)
+  ansible.builtin.shell: update-grub
+  when: 
+    - grub_timeout.changed
+    - ansible_os_family == "Debian"
+  tags:
+    - harden
+    - boot
+
+- name: Aktualisiere GRUB wenn geändert (RedHat/CentOS)
+  ansible.builtin.shell: grub2-mkconfig -o /boot/grub2/grub.cfg
+  when: 
+    - grub_timeout.changed
+    - ansible_os_family == "RedHat"
+  tags:
+    - harden
+    - boot
+
+# Banner
+- name: Setze Login-Banner
+  ansible.builtin.copy:
+    src: cis-benchmarks.conf
+    dest: /etc/issue
+    owner: root
+    group: root
+    mode: '0644'
+  tags:
+    - harden
+    - banners
+
+- name: Setze SSH-Banner
+  ansible.builtin.copy:
+    src: cis-benchmarks.conf
+    dest: /etc/issue.net
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart sshd
+  tags:
+    - harden
+    - banners 

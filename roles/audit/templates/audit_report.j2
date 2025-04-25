@@ -1,0 +1,60 @@
+############################################
+# SYSTEM AUDIT REPORT: {{ ansible_hostname }}
+# Generated: {{ ansible_date_time.date }} {{ ansible_date_time.time }}
+############################################
+
+SYSTEM INFORMATION
+-----------------
+Hostname: {{ ansible_hostname }}
+FQDN: {{ ansible_fqdn }}
+IP Addresses: {{ ansible_all_ipv4_addresses | join(', ') }}
+OS: {{ ansible_distribution }} {{ ansible_distribution_version }} ({{ ansible_distribution_release }})
+Kernel: {{ ansible_kernel }}
+
+HARDWARE INFORMATION
+-------------------
+CPU: {{ ansible_processor[1] }}
+Cores: {{ ansible_processor_cores }}
+Threads per Core: {{ ansible_processor_threads_per_core }}
+Total vCPUs: {{ ansible_processor_vcpus }}
+RAM: {{ (ansible_memtotal_mb / 1024) | round(2) }}GB
+
+DISK INFORMATION
+---------------
+{% for mount in ansible_mounts %}
+Mountpoint: {{ mount.mount }}
+  Device: {{ mount.device }}
+  Size: {{ (mount.size_total / 1024 / 1024 / 1024) | round(2) }}GB
+  Used: {{ ((mount.size_total - mount.size_available) / mount.size_total * 100) | round(2) }}%
+{% endfor %}
+
+DISK USAGE SUMMARY
+-----------------
+{{ disk_space.stdout }}
+
+PACKAGE INFORMATION
+------------------
+{% if ansible_os_family == "Debian" %}
+Installed Packages (Debian/Ubuntu):
+{{ installed_packages_deb.stdout }}
+{% elif ansible_os_family == "RedHat" %}
+Installed Packages (RedHat/CentOS):
+{{ installed_packages_rpm.stdout }}
+{% endif %}
+
+NETWORK INTERFACES
+-----------------
+{% for interface, data in ansible_interfaces|dictsort %}
+Interface: {{ interface }}
+{% if data.ipv4 is defined %}
+  IPv4: {{ data.ipv4.address }}/{{ data.ipv4.netmask }}
+{% endif %}
+{% if data.ipv6 is defined %}
+  IPv6: {{ data.ipv6[0].address }}/{{ data.ipv6[0].prefix }}
+{% endif %}
+  MAC: {{ data.macaddress|default('N/A') }}
+{% endfor %}
+
+############################################
+# END OF REPORT
+############################################ 

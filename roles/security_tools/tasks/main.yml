@@ -1,0 +1,228 @@
+---
+# Security Tools Rolle: Installiert und konfiguriert Sicherheitstools
+
+# fail2ban Installation und Konfiguration
+- name: Installiere fail2ban
+  ansible.builtin.package:
+    name: fail2ban
+    state: present
+  tags:
+    - security
+    - fail2ban
+
+- name: Erstelle fail2ban Konfigurationsverzeichnis
+  ansible.builtin.file:
+    path: /etc/fail2ban/jail.d
+    state: directory
+    mode: '0755'
+  tags:
+    - security
+    - fail2ban
+
+- name: Konfiguriere fail2ban (global)
+  ansible.builtin.template:
+    src: fail2ban/jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart fail2ban
+  tags:
+    - security
+    - fail2ban
+
+- name: Konfiguriere fail2ban SSH-Jail
+  ansible.builtin.template:
+    src: fail2ban/sshd.conf.j2
+    dest: /etc/fail2ban/jail.d/sshd.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart fail2ban
+  tags:
+    - security
+    - fail2ban
+
+- name: Aktiviere und starte fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: started
+    enabled: true
+  tags:
+    - security
+    - fail2ban
+
+# PortSentry Installation und Konfiguration
+- name: Installiere PortSentry (Debian/Ubuntu)
+  ansible.builtin.package:
+    name: portsentry
+    state: present
+  when: ansible_os_family == "Debian"
+  tags:
+    - security
+    - portsentry
+
+- name: Installiere PortSentry (RedHat/CentOS)
+  ansible.builtin.package:
+    name: portsentry
+    state: present
+  when: ansible_os_family == "RedHat"
+  tags:
+    - security
+    - portsentry
+
+- name: Konfiguriere PortSentry
+  ansible.builtin.template:
+    src: portsentry/portsentry.conf.j2
+    dest: /etc/portsentry/portsentry.conf
+    owner: root
+    group: root
+    mode: '0600'
+  notify: restart portsentry
+  tags:
+    - security
+    - portsentry
+
+- name: Konfiguriere PortSentry Ausnahmeliste
+  ansible.builtin.template:
+    src: portsentry/portsentry.ignore.j2
+    dest: /etc/portsentry/portsentry.ignore
+    owner: root
+    group: root
+    mode: '0600'
+  notify: restart portsentry
+  tags:
+    - security
+    - portsentry
+
+- name: Aktiviere PortSentry TCP und UDP Scan-Erkennung
+  ansible.builtin.lineinfile:
+    path: "{{ item.path }}"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+  loop:
+    - { path: '/etc/default/portsentry', regexp: '^TCP_MODE=', line: 'TCP_MODE="atcp"' }
+    - { path: '/etc/default/portsentry', regexp: '^UDP_MODE=', line: 'UDP_MODE="audp"' }
+  when: ansible_os_family == "Debian"
+  notify: restart portsentry
+  tags:
+    - security
+    - portsentry
+
+- name: Aktiviere und starte PortSentry
+  ansible.builtin.service:
+    name: portsentry
+    state: started
+    enabled: true
+  tags:
+    - security
+    - portsentry
+
+# psad Installation und Konfiguration
+- name: Installiere psad und Abhängigkeiten (Debian/Ubuntu)
+  ansible.builtin.package:
+    name: 
+      - psad
+      - iptables
+      - ipset
+    state: present
+  when: ansible_os_family == "Debian"
+  tags:
+    - security
+    - psad
+
+- name: Installiere psad und Abhängigkeiten (RedHat/CentOS)
+  ansible.builtin.package:
+    name: 
+      - psad
+      - iptables
+      - ipset
+    state: present
+  when: ansible_os_family == "RedHat"
+  tags:
+    - security
+    - psad
+
+- name: Konfiguriere psad
+  ansible.builtin.template:
+    src: psad/psad.conf.j2
+    dest: /etc/psad/psad.conf
+    owner: root
+    group: root
+    mode: '0600'
+  notify: restart psad
+  tags:
+    - security
+    - psad
+
+- name: Konfiguriere psad Ausnahmeliste
+  ansible.builtin.template:
+    src: psad/auto_dl.j2
+    dest: /etc/psad/auto_dl
+    owner: root
+    group: root
+    mode: '0600'
+  notify: restart psad
+  tags:
+    - security
+    - psad
+
+- name: Stelle sicher, dass iptables-Protokollierung aktiviert ist
+  ansible.builtin.shell: |
+    iptables -A INPUT -j LOG
+    iptables -A FORWARD -j LOG
+    iptables-save > /etc/iptables/rules.v4
+  args:
+    executable: /bin/bash
+  when: ansible_os_family == "Debian"
+  changed_when: false
+  tags:
+    - security
+    - psad
+
+- name: Aktiviere und starte psad
+  ansible.builtin.service:
+    name: psad
+    state: started
+    enabled: true
+  tags:
+    - security
+    - psad
+
+# Überwachung konfigurieren
+- name: Überprüfe fail2ban Status
+  ansible.builtin.shell: fail2ban-client status
+  register: fail2ban_status
+  changed_when: false
+  tags:
+    - security
+    - monitor
+
+- name: Überprüfe PortSentry Status
+  ansible.builtin.shell: systemctl status portsentry
+  register: portsentry_status
+  changed_when: false
+  tags:
+    - security
+    - monitor
+
+- name: Überprüfe psad Status
+  ansible.builtin.shell: psad -S
+  register: psad_status
+  changed_when: false
+  tags:
+    - security
+    - monitor
+
+# Berichte erstellen
+- name: Erstelle Sicherheitstools-Bericht
+  ansible.builtin.template:
+    src: security_tools_report.j2
+    dest: "/tmp/ansible_reports/{{ ansible_hostname }}_security_tools_report.txt"
+    owner: root
+    group: root
+    mode: '0640'
+  tags:
+    - security
+    - report 

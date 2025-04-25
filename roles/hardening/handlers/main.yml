@@ -1,0 +1,25 @@
+---
+# Handlers für die Hardening-Rolle
+
+- name: restart sshd
+  ansible.builtin.service:
+    name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+    state: restarted
+  tags:
+    - service
+    - ssh
+
+- name: restart apparmor
+  ansible.builtin.service:
+    name: apparmor
+    state: restarted
+  when: ansible_os_family == "Debian"
+  tags:
+    - service
+    - apparmor
+
+- name: reload sysctl
+  ansible.builtin.command: sysctl -p
+  tags:
+    - service
+    - sysctl 

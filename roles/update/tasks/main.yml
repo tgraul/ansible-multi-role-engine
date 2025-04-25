@@ -1,0 +1,144 @@
+---
+# Update-Rolle: Führt OS- und Sicherheitsupdates durch
+
+# Vorbereitungen
+- name: Cache aktualisieren (Debian/Ubuntu)
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+  tags:
+    - update
+    - packages
+
+- name: Repository-Cache aktualisieren (RedHat/CentOS)
+  ansible.builtin.yum:
+    update_cache: true
+  when: ansible_os_family == "RedHat"
+  tags:
+    - update
+    - packages
+
+# Liste der verfügbaren Updates
+- name: Verfügbare Updates auflisten (Debian/Ubuntu)
+  ansible.builtin.shell: apt list --upgradable
+  register: available_updates_deb
+  changed_when: false
+  when: ansible_os_family == "Debian"
+  tags:
+    - update
+    - check
+
+- name: Verfügbare Updates auflisten (RedHat/CentOS)
+  ansible.builtin.shell: yum check-update -q | grep -v "^$"
+  register: available_updates_rpm
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family == "RedHat"
+  tags:
+    - update
+    - check
+
+# Sicherheitsupdates ausführen
+- name: Nur Sicherheitsupdates installieren (Debian/Ubuntu)
+  ansible.builtin.apt:
+    upgrade: dist
+    update_cache: true
+    force_apt_get: true
+    only_upgrade: true
+    install_recommends: false
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  when: 
+    - ansible_os_family == "Debian"
+    - security_only | default(true)
+  tags:
+    - update
+    - security
+
+- name: Nur Sicherheitsupdates installieren (RedHat/CentOS)
+  ansible.builtin.yum:
+    name: '*'
+    security: true
+    state: latest
+  when: 
+    - ansible_os_family == "RedHat"
+    - security_only | default(true)
+  tags:
+    - update
+    - security
+
+# Vollständiges Upgrade durchführen
+- name: Vollständiges System-Upgrade (Debian/Ubuntu)
+  ansible.builtin.apt:
+    upgrade: full
+    update_cache: true
+    force_apt_get: true
+    autoremove: true
+    autoclean: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  when: 
+    - ansible_os_family == "Debian"
+    - not security_only | default(true)
+  tags:
+    - update
+    - full
+
+- name: Vollständiges System-Upgrade (RedHat/CentOS)
+  ansible.builtin.yum:
+    name: '*'
+    state: latest
+  when: 
+    - ansible_os_family == "RedHat"
+    - not security_only | default(true)
+  tags:
+    - update
+    - full
+
+# Aufräumen nach Updates
+- name: Aufräumen nach Updates (Debian/Ubuntu)
+  ansible.builtin.apt:
+    autoremove: true
+    autoclean: true
+  when: ansible_os_family == "Debian"
+  tags:
+    - update
+    - cleanup
+
+- name: Aufräumen nach Updates (RedHat/CentOS)
+  ansible.builtin.yum:
+    autoremove: true
+  when: ansible_os_family == "RedHat"
+  tags:
+    - update
+    - cleanup
+
+# Neustart nach Kernel-Update, falls erforderlich
+- name: Prüfen, ob ein Neustart erforderlich ist
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: reboot_required_file
+  when: ansible_os_family == "Debian"
+  tags:
+    - update
+    - reboot
+
+- name: Benachrichtigung über erforderlichen Neustart (Debian/Ubuntu)
+  ansible.builtin.debug:
+    msg: "Ein Neustart ist erforderlich. Bitte den Server neu starten."
+  when: 
+    - ansible_os_family == "Debian"
+    - reboot_required_file.stat.exists is defined
+    - reboot_required_file.stat.exists
+  tags:
+    - update
+    - reboot
+
+- name: Benachrichtigung über erforderlichen Neustart (RedHat/CentOS)
+  ansible.builtin.debug:
+    msg: "Ein Neustart könnte erforderlich sein, falls der Kernel aktualisiert wurde."
+  when: ansible_os_family == "RedHat"
+  tags:
+    - update
+    - reboot 

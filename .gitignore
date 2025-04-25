@@ -1,0 +1,44 @@
+# Ansible-spezifische Dateien
+*.retry
+
+# Temporäre Dateien
+*.tmp
+*.bak
+*.swp
+*~
+
+# Vertrauliche Dateien
+vault_password.txt
+*.vault
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDEs
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Systemdateien
+.DS_Store
+Thumbs.db 

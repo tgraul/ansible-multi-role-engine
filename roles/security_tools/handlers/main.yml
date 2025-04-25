@@ -1,0 +1,26 @@
+---
+# Handlers für die Security Tools Rolle
+
+- name: restart fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: restarted
+  tags:
+    - security
+    - fail2ban
+
+- name: restart portsentry
+  ansible.builtin.service:
+    name: portsentry
+    state: restarted
+  tags:
+    - security
+    - portsentry
+
+- name: restart psad
+  ansible.builtin.service:
+    name: psad
+    state: restarted
+  tags:
+    - security
+    - psad 

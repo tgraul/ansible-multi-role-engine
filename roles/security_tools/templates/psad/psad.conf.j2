@@ -1,0 +1,40 @@
+###############################################################################
+#                        psad Konfiguration
+#               Generiert durch Ansible
+###############################################################################
+
+# E-Mail Konfiguration
+EMAIL_ADDRESSES          {{ psad_email_addresses | default('root@localhost') }};
+HOSTNAME                 {{ ansible_hostname }};
+EMAIL_ALERT_DANGER_LEVEL {{ psad_email_alert_danger_level | default(1) }};
+EMAIL_LIMIT              {{ psad_email_limit | default(50) }};
+
+# Warnstufen und Schwellenwerte
+DANGER_LEVEL1            {{ psad_danger_level1 | default(5) }};
+DANGER_LEVEL2            {{ psad_danger_level2 | default(15) }};
+DANGER_LEVEL3            {{ psad_danger_level3 | default(50) }};
+DANGER_LEVEL4            {{ psad_danger_level4 | default(150) }};
+DANGER_LEVEL5            {{ psad_danger_level5 | default(1500) }};
+
+# Port-Scan Erkennung
+PORT_RANGE_SCAN_THRESHOLD {{ psad_port_range_scan_threshold | default(1) }};
+ENABLE_PORT_RANGE_SCAN_DETECTION {{ psad_enable_port_range_scan_detection | default('Y') }};
+
+# Check-Intervalle
+CHECK_INTERVAL           {{ psad_check_interval | default(5) }};
+ANALYSIS_MODE            {{ psad_analysis_mode | default('0') }};
+
+# Firewallblock - automatische Abwehr
+ENABLE_AUTO_IDS          {{ psad_enable_auto_ids | default('Y') }};
+AUTO_BLOCK_TIMEOUT       {{ psad_auto_block_timeout | default(3600) }};
+AUTO_IDS_DANGER_LEVEL    {{ psad_auto_ids_danger_level | default(5) }};
+
+# Protokollierung
+ENABLE_SYSLOG_FILE       {{ psad_enable_syslog_file | default('Y') }};
+IPT_SYSLOG_FILE          {{ psad_ipt_syslog_file | default('/var/log/syslog') }};
+CHECK_INTERVAL           {{ psad_check_interval | default(15) }};
+
+# Ausnahmelisten
+IGNORE_PORTS             {{ psad_ignore_ports | default('20,21,22,25,53,80,110,113,143,161,443,465,993,995') }};
+ENABLE_AUTO_DL           {{ psad_enable_auto_dl | default('Y') }};
+AUTO_DL_FILE             {{ psad_auto_dl_file | default('/etc/psad/auto_dl') }}; 

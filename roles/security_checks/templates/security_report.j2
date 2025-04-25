@@ -1,0 +1,72 @@
+############################################
+# SYSTEM SECURITY REPORT: {{ ansible_hostname }}
+# Generated: {{ ansible_date_time.date }} {{ ansible_date_time.time }}
+############################################
+
+OPEN PORTS (LOCAL)
+-----------------
+{{ nmap_local_scan.stdout }}
+
+OPEN PORTS (EXTERNAL)
+-------------------
+{{ nmap_external_scan.stdout }}
+
+OUTDATED PACKAGES
+---------------
+{% if ansible_os_family == "Debian" %}
+{{ outdated_packages_deb.stdout }}
+{% elif ansible_os_family == "RedHat" %}
+{{ outdated_packages_rpm.stdout }}
+{% endif %}
+
+PACKAGE INTEGRITY ISSUES
+---------------------
+{% if ansible_os_family == "Debian" %}
+{{ package_integrity_deb.stdout }}
+{% elif ansible_os_family == "RedHat" %}
+{{ package_integrity_rpm.stdout }}
+{% endif %}
+
+SSH CONFIGURATION
+--------------
+{{ ssh_security_check.stdout }}
+
+WEBSERVER CONFIGURATION
+--------------------
+{% if web_service == "nginx" %}
+## NGINX Configuration:
+{{ nginx_security_check.stdout }}
+{% else %}
+## APACHE Configuration:
+{{ apache_security_check.stdout }}
+{% endif %}
+
+USERS WITH EMPTY PASSWORDS
+-----------------------
+{{ empty_password_users.stdout }}
+
+USERS WITH UID 0 (OTHER THAN ROOT)
+-------------------------------
+{{ uid_zero_users.stdout }}
+
+SUID/SGID BINARIES
+---------------
+{{ suid_sgid_binaries.stdout }}
+
+ACTIVE SERVICES
+------------
+{{ active_services.stdout }}
+
+SECURITY RECOMMENDATIONS
+---------------------
+- Ensure all packages are up-to-date
+- Limit SSH access and disable password authentication
+- Review all SUID/SGID binaries and remove unnecessary ones
+- Disable unused services
+- Configure firewall to restrict port access
+- Implement proper user access controls
+- Follow CIS benchmarks for system hardening
+
+############################################
+# END OF REPORT
+############################################ 

@@ -1,0 +1,27 @@
+############################################
+# PSAD auto_dl Konfiguration
+# Generiert durch Ansible
+############################################
+
+# Lokale Netzwerke
+127.0.0.0/8    0;  # Localhost
+{% if ansible_default_ipv4.network is defined and ansible_default_ipv4.netmask is defined %}
+{{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.netmask }}  0;  # Lokales Netzwerk
+{% endif %}
+
+# Eigene IP nicht blockieren
+{{ ansible_default_ipv4.address }}    0;
+
+# Trusted networks
+{% if psad_trusted_networks is defined %}
+{% for network in psad_trusted_networks %}
+{{ network }}    0;
+{% endfor %}
+{% endif %}
+
+# Trusted hosts
+{% if psad_trusted_hosts is defined %}
+{% for host in psad_trusted_hosts %}
+{{ host }}    0;
+{% endfor %}
+{% endif %} 

@@ -1,0 +1,76 @@
+---
+# Audit-Rolle: Erfasst System-Facts
+
+- name: Erfasse System-Basisinformationen
+  block:
+    - name: Hostname erfassen
+      ansible.builtin.debug:
+        var: ansible_hostname
+      register: hostname_info
+      tags: audit_hostname
+
+    - name: IP-Adressen erfassen
+      ansible.builtin.debug:
+        var: ansible_all_ipv4_addresses
+      register: ip_info
+      tags: audit_ip
+
+    - name: OS-Version erfassen
+      ansible.builtin.debug:
+        msg: "{{ ansible_distribution }} {{ ansible_distribution_version }} ({{ ansible_distribution_release }})"
+      register: os_info
+      tags: audit_os
+
+    - name: CPU-Information erfassen
+      ansible.builtin.debug:
+        msg: "CPU: {{ ansible_processor[1] }}, Cores: {{ ansible_processor_cores }}, Threads: {{ ansible_processor_threads_per_core }}"
+      register: cpu_info
+      tags: audit_cpu
+
+    - name: RAM-Information erfassen
+      ansible.builtin.debug:
+        msg: "RAM: {{ (ansible_memtotal_mb / 1024) | round(2) }}GB"
+      register: ram_info
+      tags: audit_ram
+  tags: audit_basics
+
+- name: Erfasse Dateisystem-Information
+  block:
+    - name: Liste alle Dateisysteme
+      ansible.builtin.debug:
+        var: ansible_mounts
+      register: filesystem_info
+      tags: audit_filesystems
+      
+    - name: Zusammenfassung Plattenspeicher
+      ansible.builtin.shell: df -h
+      register: disk_space
+      changed_when: false
+      tags: audit_disk
+  tags: audit_storage
+
+- name: Erfasse Paketinformationen
+  block:
+    - name: Erfasse installierte Pakete (Debian/Ubuntu)
+      ansible.builtin.shell: dpkg -l | grep -v "^rc" | grep -v "^un" | awk '{print $2 " " $3}'
+      register: installed_packages_deb
+      changed_when: false
+      when: ansible_os_family == "Debian"
+      tags: audit_packages
+
+    - name: Erfasse installierte Pakete (RedHat/CentOS)
+      ansible.builtin.shell: rpm -qa --qf '%{NAME} %{VERSION}-%{RELEASE}\n'
+      register: installed_packages_rpm
+      changed_when: false
+      when: ansible_os_family == "RedHat"
+      tags: audit_packages
+  tags: audit_software
+
+- name: Erstelle Audit-Bericht
+  ansible.builtin.template:
+    src: audit_report.j2
+    dest: "/tmp/{{ ansible_hostname }}_audit_report.txt"
+    owner: root
+    group: root
+    mode: '0640'
+  tags: audit_report 

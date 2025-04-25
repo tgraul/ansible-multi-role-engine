@@ -1,0 +1,80 @@
+---
+# Pre-Tasks: Vorbereitende Prüfungen vor der Playbook-Ausführung
+
+- name: Überprüfe Ansible-Version
+  ansible.builtin.assert:
+    that:
+      - ansible_version.full is version_compare('2.9', '>=')
+    fail_msg: "Dieses Playbook benötigt Ansible 2.9 oder höher. Aktuell ist {{ ansible_version.full }} installiert."
+    success_msg: "Ansible-Version {{ ansible_version.full }} unterstützt"
+  tags:
+    - always
+
+- name: Überprüfe Python-Version
+  ansible.builtin.assert:
+    that:
+      - ansible_python_version is version_compare('2.7', '>=')
+    fail_msg: "Dieses Playbook benötigt Python 2.7 oder höher. Aktuell ist {{ ansible_python_version }} installiert."
+    success_msg: "Python-Version {{ ansible_python_version }} unterstützt"
+  tags:
+    - always
+
+- name: Überprüfe SSH-Zugriff
+  ansible.builtin.ping:
+  register: ping_result
+  tags:
+    - always
+
+- name: Überprüfe Sudo-Rechte
+  ansible.builtin.shell: sudo -n true
+  register: sudo_check
+  failed_when: sudo_check.rc != 0
+  changed_when: false
+  ignore_unreachable: true
+  tags:
+    - always
+
+- name: Sammle System-Fakten
+  ansible.builtin.setup:
+    gather_subset:
+      - all
+  tags:
+    - always
+
+- name: Überprüfe unterstütztes Betriebssystem
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family in ['Debian', 'RedHat']
+    fail_msg: "Das Betriebssystem {{ ansible_distribution }} ({{ ansible_os_family }}) wird nicht unterstützt. Nur Debian/Ubuntu und RedHat/CentOS werden unterstützt."
+    success_msg: "Betriebssystem {{ ansible_distribution }} {{ ansible_distribution_version }} wird unterstützt"
+  tags:
+    - always
+
+- name: Überprüfe verfügbaren Speicherplatz
+  ansible.builtin.shell: "df -h / | awk 'NR==2 {print $5}' | sed 's/%//'"
+  register: disk_space
+  changed_when: false
+  tags:
+    - always
+
+- name: Warne bei geringem Speicherplatz
+  ansible.builtin.debug:
+    msg: "WARNUNG: Nur noch {{ 100 - disk_space.stdout|int }}% freier Speicherplatz auf / verfügbar!"
+  when: disk_space.stdout|int > 85
+  tags:
+    - always
+
+- name: Überprüfe RAM-Speicher
+  ansible.builtin.debug:
+    msg: "WARNUNG: System hat nur {{ ansible_memtotal_mb }} MB RAM (weniger als 1GB)!"
+  when: ansible_memtotal_mb < 1024
+  tags:
+    - always
+
+- name: Lege temporäres Verzeichnis für Berichte an
+  ansible.builtin.file:
+    path: /tmp/ansible_reports
+    state: directory
+    mode: '0755'
+  tags:
+    - always 

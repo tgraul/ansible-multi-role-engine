@@ -1,0 +1,189 @@
+---
+# Security Checks Rolle: Überprüft Systemsicherheit
+
+# Pre-flight-Checks
+- name: Überprüfe erforderliche Pakete
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - nmap
+    - debsums
+  when: ansible_os_family == "Debian"
+  tags:
+    - security
+    - prerequisite
+
+- name: Überprüfe erforderliche Pakete (RedHat)
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - nmap
+    - rpmverify
+  when: ansible_os_family == "RedHat"
+  tags:
+    - security
+    - prerequisite
+
+# Netzwerk-Scans
+- name: Scannen nach offenen Ports (lokal)
+  ansible.builtin.shell: nmap {{ nmap_scan_types }} 127.0.0.1 -p {{ security_scan_ports }}
+  register: nmap_local_scan
+  changed_when: false
+  tags:
+    - security
+    - network
+
+- name: Scannen nach offenen Ports (extern)
+  ansible.builtin.shell: nmap {{ nmap_scan_types }} {{ ansible_default_ipv4.address }} -p {{ security_scan_ports }}
+  register: nmap_external_scan
+  changed_when: false
+  tags:
+    - security
+    - network
+
+- name: Erzeugen Netzwerk-Scan-Bericht
+  ansible.builtin.template:
+    src: network_scan_report.j2
+    dest: "/tmp/{{ ansible_hostname }}_network_scan.txt"
+    owner: root
+    group: root
+    mode: '0640'
+  tags:
+    - security
+    - report
+
+# Paketüberprüfung
+- name: Suche nach veralteten Paketen (Debian/Ubuntu)
+  ansible.builtin.shell: apt list --upgradable | grep -v "Listing" || true
+  register: outdated_packages_deb
+  changed_when: false
+  when: ansible_os_family == "Debian"
+  tags:
+    - security
+    - packages
+
+- name: Suche nach veralteten Paketen (RedHat/CentOS)
+  ansible.builtin.shell: yum check-update -q | grep -v "^$" || true
+  register: outdated_packages_rpm
+  changed_when: false
+  when: ansible_os_family == "RedHat"
+  tags:
+    - security
+    - packages
+
+- name: Überprüfe Integrität der installierten Pakete (Debian/Ubuntu)
+  ansible.builtin.shell: debsums -c 2>/dev/null || true
+  register: package_integrity_deb
+  changed_when: false
+  when: ansible_os_family == "Debian"
+  tags:
+    - security
+    - packages
+
+- name: Überprüfe Integrität der installierten Pakete (RedHat/CentOS)
+  ansible.builtin.shell: rpm -Va --nomtime --nomode --nomd5 --nolinkto | grep -v "^$" || true
+  register: package_integrity_rpm
+  changed_when: false
+  when: ansible_os_family == "RedHat"
+  tags:
+    - security
+    - packages
+
+# SSH-Sicherheitsprüfung
+- name: Prüfe SSH-Konfiguration auf Schwachstellen
+  ansible.builtin.shell: sshd -T | grep -E 'permitrootlogin|passwordauthentication|x11forwarding|maxauthtries'
+  register: ssh_security_check
+  changed_when: false
+  tags:
+    - security
+    - ssh
+
+# Webserver-Sicherheitsprüfung
+- name: Prüfe Nginx-Konfiguration (wenn installiert)
+  ansible.builtin.shell: |
+    if command -v nginx >/dev/null 2>&1; then
+      nginx -t 2>/dev/null || echo "Konfigurationsfehler in Nginx"
+      grep -E 'server_tokens|ssl_protocols|ssl_prefer_server_ciphers' /etc/nginx/nginx.conf 2>/dev/null || echo "Sicherheitsoptionen nicht gesetzt"
+    else
+      echo "Nginx nicht installiert"
+    fi
+  register: nginx_security_check
+  changed_when: false
+  tags:
+    - security
+    - web
+
+- name: Prüfe Apache-Konfiguration (wenn installiert)
+  ansible.builtin.shell: |
+    if command -v apache2 >/dev/null 2>&1 || command -v httpd >/dev/null 2>&1; then
+      if command -v apache2 >/dev/null 2>&1; then
+        apache2 -t 2>/dev/null || echo "Konfigurationsfehler in Apache"
+        grep -E 'ServerTokens|SSLProtocol|SSLCipherSuite' /etc/apache2/apache2.conf 2>/dev/null || echo "Sicherheitsoptionen nicht gesetzt"
+      else
+        httpd -t 2>/dev/null || echo "Konfigurationsfehler in Apache"
+        grep -E 'ServerTokens|SSLProtocol|SSLCipherSuite' /etc/httpd/conf/httpd.conf 2>/dev/null || echo "Sicherheitsoptionen nicht gesetzt"
+      fi
+    else
+      echo "Apache nicht installiert"
+    fi
+  register: apache_security_check
+  changed_when: false
+  tags:
+    - security
+    - web
+
+# Benutzerkonten und Zugriffskontrolle prüfen
+- name: Prüfe Benutzer mit leeren Passwörtern
+  ansible.builtin.shell: awk -F: '($2 == "" ) { print $1 }' /etc/shadow 2>/dev/null || true
+  register: empty_password_users
+  changed_when: false
+  tags:
+    - security
+    - users
+
+- name: Suche nach Benutzern mit UID 0 (außer root)
+  ansible.builtin.shell: awk -F: '($3 == 0 && $1 != "root") { print $1 }' /etc/passwd || true
+  register: uid_zero_users
+  changed_when: false
+  tags:
+    - security
+    - users
+
+# SUID/SGID Binaries
+- name: Suche nach SUID/SGID Binaries
+  ansible.builtin.shell: find / -type f \( -perm -4000 -o -perm -2000 \) -exec ls -la {} \; 2>/dev/null || true
+  register: suid_sgid_binaries
+  changed_when: false
+  tags:
+    - security
+    - files
+
+# Systemdienste
+- name: Prüfe aktive Dienste
+  ansible.builtin.shell: |
+    if command -v systemctl >/dev/null 2>&1; then
+      systemctl list-units --type=service --state=active
+    elif command -v service >/dev/null 2>&1; then
+      service --status-all | grep "+"
+    else
+      echo "Kein Service-Manager gefunden"
+    fi
+  register: active_services
+  changed_when: false
+  tags:
+    - security
+    - services
+
+# Gesamtbericht erstellen
+- name: Erstelle Sicherheitsbericht
+  ansible.builtin.template:
+    src: security_report.j2
+    dest: "/tmp/{{ ansible_hostname }}_security_report.txt"
+    owner: root
+    group: root
+    mode: '0640'
+  tags:
+    - security
+    - report 

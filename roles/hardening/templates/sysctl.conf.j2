@@ -1,0 +1,62 @@
+# Konfiguriert durch Ansible Hardening-Rolle
+# CIS Benchmark Empfehlungen für sysctl-Konfiguration
+
+# IP Forwarding deaktivieren
+net.ipv4.ip_forward = 0
+
+# ICMP Redirects deaktivieren
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.default.accept_redirects = 0
+net.ipv6.conf.all.accept_redirects = 0
+net.ipv6.conf.default.accept_redirects = 0
+
+# Sichere Redirects deaktivieren
+net.ipv4.conf.all.secure_redirects = 0
+net.ipv4.conf.default.secure_redirects = 0
+
+# Quell-Routing deaktivieren
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv4.conf.default.accept_source_route = 0
+net.ipv6.conf.all.accept_source_route = 0
+net.ipv6.conf.default.accept_source_route = 0
+
+# ICMP Broadcasts ignorieren
+net.ipv4.icmp_echo_ignore_broadcasts = 1
+
+# Böswillige ICMP-Pakete ignorieren
+net.ipv4.icmp_ignore_bogus_error_responses = 1
+
+# Reverse Path Filtering aktivieren
+net.ipv4.conf.all.rp_filter = 1
+net.ipv4.conf.default.rp_filter = 1
+
+# TCP SYN Cookies aktivieren
+net.ipv4.tcp_syncookies = 1
+
+# Protokoll verdächtiger Pakete aktivieren
+net.ipv4.conf.all.log_martians = 1
+net.ipv4.conf.default.log_martians = 1
+
+# Sendet keine Redirects
+net.ipv4.conf.all.send_redirects = 0
+net.ipv4.conf.default.send_redirects = 0
+
+# IPv6 Router Advertisements deaktivieren
+net.ipv6.conf.all.accept_ra = 0
+net.ipv6.conf.default.accept_ra = 0
+
+# Speicherraum-Randomisierung aktivieren
+kernel.randomize_va_space = 2
+
+# Core Dumps deaktivieren
+fs.suid_dumpable = 0
+
+# Minimiere Swap-Nutzung
+vm.swappiness = 10
+
+# IPv6 konfigurieren wenn benötigt, ansonsten deaktivieren
+{% if disable_ipv6 | default(false) %}
+net.ipv6.conf.all.disable_ipv6 = 1
+net.ipv6.conf.default.disable_ipv6 = 1
+net.ipv6.conf.lo.disable_ipv6 = 1
+{% endif %} 

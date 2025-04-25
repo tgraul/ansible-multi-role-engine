@@ -1,0 +1,114 @@
+---
+# Zentrale Variablen für alle Rollen
+
+# Allgemeine Einstellungen
+security_only: true  # Nur Sicherheitsupdates installieren
+disable_ipv6: false  # IPv6 deaktivieren (true/false)
+reboot_after_update: false  # Automatisch neu starten nach Kernel-Updates
+
+# System
+ntp_servers:
+  - 0.de.pool.ntp.org
+  - 1.de.pool.ntp.org
+  - 2.de.pool.ntp.org
+
+# Benutzer-Konfiguration
+admin_users:
+  - name: ansible_admin
+    groups: ['sudo']
+    shell: /bin/bash
+    ssh_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQD3F6tyPEFEzV0LX3X8BsXdMsQz1x2cEikKDEY0aIj41qgxMCP/iteneqXSIFZBp5vizPvaoIR3Um9xK7PGoW8giupGn+EPuxIA4cDM4vzOqOkiMPhz5XK0whEjkVzTo4+S0puvDZuwIsdiW9mxhJc7tgBNL0cYlWSYVkz4G/fslNfRPW5mYAM49f4fhtxPb5ok4Q2Lg9dPKVHO/Bgeu5woMc7RY0p1ej6D4CKFE6lymSDJpW0YHX/wqE9+cfEauh7xZcG0q9t2ta6F6fmX0agvpFyZo8aFbXeUBr7osSCJNgvavWbM/06niWrOvYX2xwWdhXmXSrbX8ZbabVohBK41"
+
+# Zu entfernende Benutzer
+remove_users:
+  - guest
+  - test
+
+# SSH-Konfiguration
+sshd_config:
+  port: 22222
+  protocol_version: 2
+  permit_root_login: "no"
+  password_authentication: "no"
+  allow_agent_forwarding: "no"
+  allow_tcp_forwarding: "no"
+  x11_forwarding: "no"
+  max_auth_tries: 3
+  client_alive_interval: 300
+  client_alive_count_max: 0
+  login_grace_time: 60
+
+# Web-Service-Konfiguration
+web_service: nginx  # Alternative: apache
+web_port: 80
+web_ssl_port: 443
+web_server_name: "{{ ansible_fqdn }}"
+web_document_root: "/var/www/html"
+enable_web_ssl: true
+
+# Docker-Konfiguration
+docker_users:
+  - ansible_admin
+docker_compose_version: "2.15.1"
+docker_apt_repository: "deb [arch={{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
+
+# Security-Check-Konfiguration
+nmap_scan_types: "-sS -sV -sU -O"
+security_scan_ports: "20-25,53,80,443,8080-8090"
+report_directory: "/tmp/ansible_reports"
+
+# Härtungs-Konfiguration
+apply_cis_benchmark: true
+sysctl_config:
+  net.ipv4.ip_forward: 0
+  net.ipv4.conf.all.send_redirects: 0
+  net.ipv4.conf.default.send_redirects: 0
+  net.ipv4.conf.all.accept_redirects: 0
+  net.ipv4.conf.default.accept_redirects: 0
+  net.ipv6.conf.all.accept_redirects: 0
+  net.ipv6.conf.default.accept_redirects: 0
+  net.ipv4.conf.all.secure_redirects: 0
+  net.ipv4.conf.default.secure_redirects: 0
+  kernel.randomize_va_space: 2
+  net.ipv4.tcp_syncookies: 1
+  net.ipv4.icmp_echo_ignore_broadcasts: 1
+  net.ipv4.icmp_ignore_bogus_error_responses: 1
+  fs.suid_dumpable: 0
+  kernel.core_uses_pid: 1
+
+# Security Tools Konfiguration
+# fail2ban Konfiguration
+fail2ban_bantime: 86400  # 24 Stunden Sperrzeit
+fail2ban_findtime: 600   # 10 Minuten Erkennungszeitraum
+fail2ban_maxretry: 5     # 5 Versuche bevor Sperre
+fail2ban_ignoreip:
+  - 127.0.0.1/8
+  - "{{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.netmask }}"
+fail2ban_destemail: "root@localhost"
+fail2ban_action: "mwl"  # mail-whois-lines
+fail2ban_sshd_maxretry: 3
+fail2ban_sshd_bantime: 86400
+
+# PortSentry Konfiguration
+portsentry_scan_trigger: 1
+portsentry_block_tcp: 2
+portsentry_block_udp: 2
+portsentry_trusted_networks:
+  - "{{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.netmask }}"
+
+# PSAD Konfiguration
+psad_email_addresses: "root@localhost"
+psad_danger_level1: 5
+psad_danger_level2: 15
+psad_danger_level3: 50
+psad_danger_level4: 150
+psad_danger_level5: 1500
+psad_email_alert_danger_level: 1
+psad_enable_auto_ids: "Y"
+psad_auto_ids_danger_level: 4
+psad_auto_block_timeout: 3600
+psad_check_interval: 10
+psad_enable_port_range_scan_detection: "Y"
+psad_port_range_scan_threshold: 1
+psad_trusted_networks:
+  - "{{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.netmask }}" 

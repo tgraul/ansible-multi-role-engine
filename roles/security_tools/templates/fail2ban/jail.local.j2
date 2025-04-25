@@ -1,0 +1,41 @@
+[DEFAULT]
+# "bantime" is the number of seconds that a host is banned.
+bantime  = {{ fail2ban_bantime | default(3600) }}
+
+# A host is banned if it has generated "maxretry" during the last "findtime"
+# seconds.
+findtime  = {{ fail2ban_findtime | default(600) }}
+
+# "maxretry" is the number of failures before a host get banned.
+maxretry = {{ fail2ban_maxretry | default(5) }}
+
+# "backend" specifies the backend used to get files modification.
+# Available options are "pyinotify", "gamin", "polling", "systemd" and "auto".
+backend = auto
+
+# Ban hosts in all jails
+banaction = {{ fail2ban_banaction | default('iptables-multiport') }}
+
+# Default banning action
+# action_* variables are used to define combinations of actions
+# to be used. These combinations are initialized using
+# "action = %(action_*)s" in jails as needed.
+action = %(action_{{ fail2ban_action | default('mwl') }})s
+
+# Send email with whois report to the destemail.
+destemail = {{ fail2ban_destemail | default('root@localhost') }}
+
+# Sender e-mail address
+sender = {{ fail2ban_sender | default('fail2ban@localhost') }}
+
+# E-mail action. Since 0.8.1 Fail2Ban uses sendmail MTA for the
+# mailing. Change mta configuration parameter to mail if you want to
+# revert to conventional 'mail'.
+mta = {{ fail2ban_mta | default('sendmail') }}
+
+# Ignore IP addresses from the list
+{% if fail2ban_ignoreip is defined %}
+ignoreip = {{ fail2ban_ignoreip | join(' ') }}
+{% else %}
+ignoreip = 127.0.0.1/8 ::1
+{% endif %}
