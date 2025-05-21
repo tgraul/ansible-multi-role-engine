@@ -57,10 +57,12 @@
   ansible.builtin.yum_repository:
     name: docker-ce
     description: Docker CE Repository
-    baseurl: https://download.docker.com/linux/centos/$releasever/$basearch/stable
+    baseurl: "https://download.docker.com/linux/{{ dist_path_component }}/$releasever/$basearch/stable"
     gpgcheck: true
-    gpgkey: https://download.docker.com/linux/centos/gpg
+    gpgkey: "https://download.docker.com/linux/{{ dist_path_component }}/gpg"
     enabled: true
+  vars:
+    dist_path_component: "{{ 'fedora' if ansible_distribution == 'Fedora' else ('rhel' if ansible_distribution in ['RedHat Enterprise Linux', 'RHEL'] else (ansible_distribution | lower)) }}"
   when: ansible_os_family == "RedHat"
   tags:
     - docker
